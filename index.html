@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>計時器</title>
+		<style>
+			body {
+				margin: 0;
+				overflow: hidden;
+				font-family: Arial, sans-serif;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				height: 100vh;
+				background-color: #f0f0f0;
+			}
+			#titlebar {
+				width: 100%;
+				height: 30px;
+				background: #333;
+				color: white;
+				display: flex;
+				align-items: center;
+				padding: 0 10px;
+				-webkit-app-region: drag;
+				position: fixed;
+				top: 0;
+				left: 0;
+			}
+			#closeButton {
+				margin-left: auto;
+				padding: 5px 10px;
+				background: red;
+				color: white;
+				font-weight: bold;
+				cursor: pointer;
+				-webkit-app-region: no-drag;
+				border-radius: 3px;
+			}
+			#timer {
+				font-size: 2em;
+				margin-bottom: 20px;
+			}
+			button,
+			input {
+				margin: 5px;
+				padding: 10px;
+				font-size: 1em;
+			}
+			.controls {
+				display: flex;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="titlebar">
+			計時器
+			<div id="closeButton">X</div>
+		</div>
+
+		<div id="timer">00:00:00</div>
+		<div class="controls">
+			<button id="startStopButton">開始</button>
+			<button id="resetButton">重置</button>
+			<button id="countdownButton">倒數</button>
+		</div>
+		<input type="number" id="countdownInput" placeholder="秒數" min="1" />
+		<audio id="alarmSound" src="alarm.mp3"></audio>
+
+		<script>
+			document.getElementById('closeButton').addEventListener('click', () => {
+				window.electron.closeApp()
+			})
+
+			let timerElement = document.getElementById('timer')
+			let startStopButton = document.getElementById('startStopButton')
+			let resetButton = document.getElementById('resetButton')
+			let countdownButton = document.getElementById('countdownButton')
+			let countdownInput = document.getElementById('countdownInput')
+
+			let isCountdownRunning = false
+			let isRunning = false
+			let startTime,
+				elapsedTime = 0
+			let timerInterval, countdownInterval
+
+			function updateTimer() {
+				let timeDiff = Date.now() - startTime + elapsedTime
+				let hours = Math.floor(timeDiff / 3600000)
+				let minutes = Math.floor((timeDiff % 3600000) / 60000)
+				let seconds = Math.floor((timeDiff % 60000) / 1000)
+				timerElement.textContent =
+					String(hours).padStart(2, '0') +
+					':' +
+					String(minutes).padStart(2, '0') +
+					':' +
+					String(seconds).padStart(2, '0')
+			}
+
+			function startTimer() {
+				if (isCountdownRunning) {
+					alert('請先停止倒數計時！')
+					return
+				}
+				if (isRunning) return
+
+				startTime = Date.now() - elapsedTime
+				timerInterval = setInterval(updateTimer, 1000)
+				isRunning = true
+				startStopButton.textContent = '停止'
+			}
+
+			function stopTimer() {
+				clearInterval(timerInterval)
+				elapsedTime += Date.now() - startTime
+				isRunning = false
+				startStopButton.textContent = '開始'
+			}
+
+			function resetTimer() {
+				clearInterval(timerInterval)
+				clearInterval(countdownInterval)
+				elapsedTime = 0
+				isRunning = false
+				isCountdownRunning = false
+				timerElement.textContent = '00:00:00'
+				startStopButton.textContent = '開始'
+			}
+
+			function startCountdown() {
+				let countdownTime = parseInt(countdownInput.value) * 1000
+				if (isNaN(countdownTime) || countdownTime <= 0) {
+					alert('請輸入有效的秒數')
+					return
+				}
+
+				if (isRunning) {
+					alert('請先停止碼表計時！')
+					return
+				}
+				if (isCountdownRunning) return
+
+				clearInterval(countdownInterval)
+				isCountdownRunning = true
+
+				countdownInterval = setInterval(() => {
+					countdownTime -= 1000
+					let minutes = Math.floor(countdownTime / 60000)
+					let seconds = Math.floor((countdownTime % 60000) / 1000)
+					timerElement.textContent =
+						'00:' +
+						String(minutes).padStart(2, '0') +
+						':' +
+						String(seconds).padStart(2, '0')
+
+					if (countdownTime <= 0) {
+						clearInterval(countdownInterval)
+						isCountdownRunning = false
+						document.getElementById('alarmSound').play()
+						alert('時間到！')
+					}
+				}, 1000)
+			}
+
+			startStopButton.addEventListener('click', () => {
+				if (isRunning) {
+					stopTimer()
+				} else {
+					startTimer()
+				}
+			})
+
+			resetButton.addEventListener('click', resetTimer)
+			countdownButton.addEventListener('click', startCountdown)
+
+			countdownInput.addEventListener('input', () => {
+				if (countdownInput.value < 1) {
+					countdownInput.value = 1
+				}
+			})
+		</script>
+	</body>
+</html>
